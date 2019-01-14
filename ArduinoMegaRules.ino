@@ -145,6 +145,7 @@ struct SettingsStruct
   unsigned long Delay;
   unsigned int  Port;
   char          Name[26];
+  char          Group[26];
   byte          SerialLogLevel;
   unsigned long BaudRate;
   unsigned long MessageDelay;
@@ -164,6 +165,7 @@ struct NodeStruct
   byte IP[4];
   byte age;
   String nodeName;
+  String group;
 } Nodes[UNIT_MAX];
 
 struct nvarStruct
@@ -245,7 +247,8 @@ void setup()
     Nodes[0].IP[x] = IP[x];
   Nodes[0].age = 0;
   Nodes[0].nodeName = Settings.Name;
-
+  Nodes[0].group = Settings.Group;
+  
   portUDP.begin(Settings.Port); // setup for NTP and other stuff if no user port is selected
       
   PluginInit();

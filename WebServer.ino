@@ -206,11 +206,16 @@ byte sortedIndex[UNIT_MAX + 1];
 void handle_root(EthernetClient client, String &post) {
 
   String sCommand = WebServer.arg(F("cmd"));
+  String group = WebServer.arg("group");
+  boolean groupList = true;
+
+  if (group != "")
+    groupList = false;
 
   if (strcasecmp_P(sCommand.c_str(), PSTR("reboot")) != 0)
   {
     String reply = "";
-    reply.reserve(1000);
+    reply.reserve(500);
 
     if (sCommand.length() > 0)
       ExecuteCommand(sCommand.c_str());
@@ -225,28 +230,65 @@ void handle_root(EthernetClient client, String &post) {
     // first get the list in alphabetic order
     for (byte x = 0; x <= UNIT_MAX; x++)
       sortedIndex[x] = x;
-    sortDeviceArray();
-    
-   for (byte x = 0; x < UNIT_MAX; x++)
-    {
-      byte index = sortedIndex[x];
-      if (Nodes[index].IP[0] != 0)
+
+   if (groupList == true) {
+      // Show Group list
+      sortDeviceArrayGroup(); // sort on groupname
+      String prevGroup = "?";
+      for (byte x = 0; x < UNIT_MAX; x++)
       {
-        String buttonclass ="";
-        if ((String)Settings.Name == Nodes[index].nodeName)
-          buttonclass = F("button-nodelinkA");
-        else
-          buttonclass = F("button-nodelink");
-        reply += F("<TR><TD><a class=\"");
-        reply += buttonclass;
-        reply += F("\" ");
-        char url[40];
-        sprintf_P(url, PSTR("href='http://%u.%u.%u.%u'"), Nodes[index].IP[0], Nodes[index].IP[1], Nodes[index].IP[2], Nodes[index].IP[3]);
-        reply += url;
-        reply += ">";
-        reply += Nodes[index].nodeName;
-        reply += F("</a>");
-        reply += F("<TD>");
+        byte index = sortedIndex[x];
+        if (Nodes[index].IP[0] != 0) {
+          String group = Nodes[index].group;
+          if (group != prevGroup)
+          {
+            prevGroup = group;
+            reply += F("<TR><TD><a class=\"");
+            reply += F("button-nodelink");
+            reply += F("\" ");
+            reply += F("href='/?group=");
+            reply += group;
+            reply += "'>";
+            reply += group;
+            reply += F("</a>");
+            reply += F("<TD>");
+            client.print(reply);
+            reply = "";
+          }
+        }
+      }
+      // All nodes group button
+      reply += F("<TR><TD><a class=\"button-nodelink\" href='/?group=*'>_ALL_</a><TD>");
+   }
+   else{
+     for (byte x = 0; x < UNIT_MAX; x++)
+      {
+        sortDeviceArray();
+        byte index = sortedIndex[x];
+        if (Nodes[index].IP[0] != 0 && (group == "*" || Nodes[index].group == group))
+        {
+          String buttonclass ="";
+          if ((String)Settings.Name == Nodes[index].nodeName)
+            buttonclass = F("button-nodelinkA");
+          else
+            buttonclass = F("button-nodelink");
+          reply += F("<TR><TD><a class=\"");
+          reply += buttonclass;
+          reply += F("\" ");
+          char url[40];
+          sprintf_P(url, PSTR("href='http://%u.%u.%u.%u"), Nodes[index].IP[0], Nodes[index].IP[1], Nodes[index].IP[2], Nodes[index].IP[3]);
+          reply += url;
+          if (group != "") {
+            reply += F("?group=");
+            reply += Nodes[index].group;
+          }
+          reply += "'>";
+          reply += Nodes[index].nodeName;
+          reply += F("</a>");
+          reply += F("<TD>");
+          client.print(reply);
+          reply = "";
+        }
       }
     }
     reply += F("</table></form>");
@@ -322,6 +364,32 @@ void sortDeviceArray()
       String one = Nodes[sortedIndex[innerLoop]].nodeName;
       String two = Nodes[sortedIndex[innerLoop-1]].nodeName;
       if (arrayLessThan(one,two))
+      {
+        switchArray(innerLoop);
+      }
+      innerLoop--;
+    }
+  }
+}
+
+
+//********************************************************************************
+// Device Sort routine, actual sorting
+//********************************************************************************
+void sortDeviceArrayGroup()
+{
+  int innerLoop ;
+  int mainLoop ;
+  for ( mainLoop = 1; mainLoop < UNIT_MAX; mainLoop++)
+  {
+    innerLoop = mainLoop;
+    while (innerLoop  >= 1)
+    {
+      String one = Nodes[sortedIndex[innerLoop]].group;
+      if(one.length()==0) one = "_";
+      String two = Nodes[sortedIndex[innerLoop - 1]].group;
+      if(two.length()==0) two = "_";
+      if (arrayLessThan(one, two))
       {
         switchArray(innerLoop);
       }
@@ -464,13 +532,10 @@ void handle_control(EthernetClient client, String &post) {
 
   String webrequest = WebServer.arg(F("cmd"));
 
-  // in case of event, store to buffer and return...
-  String command = parseString(webrequest, 1);
+  if (webrequest.length() > 0)
+    ExecuteCommand(webrequest.c_str());
 
   String reply = "";
-
-  if (!PluginCall(PLUGIN_WRITE, webrequest, dummyString))
-    reply += F("Unknown or restricted command!");
 
   client.println(F("HTTP/1.1 200 OK"));
   client.print(F("Content-Type:"));

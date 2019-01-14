@@ -42,7 +42,11 @@ void MSGBusReceive() {
     if (msg.substring(0, 7) == F("MSGBUS/")) {
       String sysMSG = msg.substring(7);
       if (sysMSG.substring(0, 9) == F("Hostname=")) {
-        nodelist(remoteIP, sysMSG.substring(9));
+        String params = sysMSG.substring(9);
+        String hostName = parseString(params, 1);
+        //String ip = parseString(params, 2); we just take the remote ip here
+        String group = parseString(params, 3);
+        nodelist(remoteIP, hostName, group);
       }
       if (sysMSG.substring(0, 7) == F("Refresh")) {
         MSGBusAnnounceMe();
@@ -98,5 +102,7 @@ void UDPSend(String message)
 void MSGBusAnnounceMe() {
   String msg = F("MSGBUS/Hostname=");
   msg += Settings.Name;
+  msg += ",0.0.0.0,";
+  msg += Settings.Group;
   UDPSend(msg);
 }

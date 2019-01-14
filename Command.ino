@@ -68,6 +68,10 @@ void ExecuteCommand(const char *Line)
       strcpy(Settings.Name, strP1.c_str());
     }
 
+    if (setting.equalsIgnoreCase(F("Group"))){
+      strcpy(Settings.Group, strP1.c_str());
+    }
+
     if (setting.equalsIgnoreCase(F("Network"))){
       char tmpString[26];
       strP1.toCharArray(tmpString, 26);
